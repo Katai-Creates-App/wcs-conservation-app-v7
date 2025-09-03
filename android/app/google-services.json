@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "1012071077744",
+    "project_id": "wcs-goroka-app",
+    "storage_bucket": "wcs-goroka-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1012071077744:android:f06637a02ae2721be0e1b5",
+        "android_client_info": {
+          "package_name": "com.example.conservation_data_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1012071077744-t8stv9qkoomkk4vhbfj5rj4dnttf7g5o.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDjJZa_T0x08FkpSvw08gQWh2_4QJu-YA4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1012071077744-t8stv9qkoomkk4vhbfj5rj4dnttf7g5o.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

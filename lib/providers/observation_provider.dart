@@ -14,28 +14,35 @@ class ObservationProvider extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
 
   ObservationProvider() {
+    print('ObservationProvider: Constructor called');
     loadObservations();
   }
 
   Future<void> loadObservations() async {
+    print('ObservationProvider.loadObservations: Starting to load observations');
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
     
     try {
+      print('ObservationProvider.loadObservations: Initializing ObservationStorage');
       await ObservationStorage().initialize();
+      print('ObservationProvider.loadObservations: ObservationStorage initialized, getting all observations');
       _observations = await ObservationStorage().getAll();
       _usingFallback = false;
-      print('Loaded ${_observations.length} observations');
-    } catch (e) {
-      print('Failed to load observations: $e');
+      print('ObservationProvider.loadObservations: Loaded ${_observations.length} observations successfully');
+    } catch (e, stackTrace) {
+      print('ObservationProvider.loadObservations: ERROR loading observations: $e');
+      print('ObservationProvider.loadObservations: Stack trace: $stackTrace');
       _observations = [];
       _usingFallback = true;
       _errorMessage = 'Failed to load observations. Using temporary storage.';
     }
     
     _isLoading = false;
+    print('ObservationProvider.loadObservations: Setting isLoading to false and notifying listeners');
     notifyListeners();
+    print('ObservationProvider.loadObservations: Completed');
   }
 
   Future<bool> addObservation(Observation obs) async {

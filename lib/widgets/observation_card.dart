@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/observation.dart';
 import '../screens/observation_detail_screen.dart';
+import 'dart:io';
 
 class ObservationCard extends StatelessWidget {
   final Observation observation;
@@ -111,6 +112,38 @@ class ObservationCard extends StatelessWidget {
 
   Widget _buildSpeciesIcon() {
     final isPlant = observation.speciesType == SpeciesType.plant;
+    
+    if (observation.photoPath != null) {
+      return Container(
+        width: 48,
+        height: 48,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey[300]!),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: Image.file(
+            File(observation.photoPath!),
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) {
+              return Container(
+                decoration: BoxDecoration(
+                  color: isPlant ? Colors.green[50] : Colors.blue[50],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  isPlant ? Icons.local_florist : Icons.pets,
+                  color: isPlant ? Colors.green[700] : Colors.blue[700],
+                  size: 24,
+                ),
+              );
+            },
+          ),
+        ),
+      );
+    }
+    
     return Container(
       width: 48,
       height: 48,

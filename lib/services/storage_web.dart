@@ -8,11 +8,23 @@ class WebStorageService implements ObservationStorageService {
 
   @override
   Future<void> initialize() async {
-    if (_initialized) return;
+    print('WebStorageService.initialize: Starting web storage initialization');
+    if (_initialized) {
+      print('WebStorageService.initialize: Already initialized, returning early');
+      return;
+    }
     
-    // For now, use in-memory storage for web
-    // TODO: Implement shared_preferences when available
-    _initialized = true;
+    try {
+      print('WebStorageService.initialize: Using in-memory storage for web (shared_preferences not implemented yet)');
+      // For now, use in-memory storage for web
+      // TODO: Implement shared_preferences when available
+      _initialized = true;
+      print('WebStorageService.initialize: Web storage initialization completed successfully');
+    } catch (e, stackTrace) {
+      print('WebStorageService.initialize: ERROR in web storage initialization: $e');
+      print('WebStorageService.initialize: Stack trace: $stackTrace');
+      rethrow;
+    }
   }
 
   @override

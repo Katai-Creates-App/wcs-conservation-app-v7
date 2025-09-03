@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../models/observation.dart';
 import '../providers/observation_provider.dart';
 import 'observation_form_screen.dart';
+import 'dart:io';
 
 class ObservationDetailScreen extends StatelessWidget {
   final Observation observation;
@@ -63,7 +64,28 @@ class ObservationDetailScreen extends StatelessWidget {
         child: ListView(
           children: [
             observation.photoPath != null
-                ? Image.asset('assets/placeholder.png', height: 180)
+                ? Container(
+                    width: double.infinity,
+                    height: 200,
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.file(
+                        File(observation.photoPath!),
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Icon(
+                            observation.speciesType == SpeciesType.plant ? Icons.local_florist : Icons.pets,
+                            size: 100,
+                            color: Colors.green,
+                          );
+                        },
+                      ),
+                    ),
+                  )
                 : Icon(observation.speciesType == SpeciesType.plant ? Icons.local_florist : Icons.pets, size: 100, color: Colors.green),
             const SizedBox(height: 16),
             _buildDetailRow('Species Name', observation.speciesName),

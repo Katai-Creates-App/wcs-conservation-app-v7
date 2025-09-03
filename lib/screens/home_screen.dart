@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import '../providers/observation_provider.dart';
 import '../models/observation.dart';
 import '../widgets/observation_card.dart';
@@ -15,6 +17,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
   int _selectedIndex = 0;
   String _searchQuery = '';
   SpeciesType? _filterType;
@@ -23,13 +26,29 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    print('HomeScreen.initState called');
     loadData();
   }
 
   Future<void> loadData() async {
+    print('HomeScreen.loadData started');
+    
     if (mounted) {
-      final provider = Provider.of<ObservationProvider>(context, listen: false);
-      await provider.loadObservations();
+      try {
+        print('HomeScreen.loadData: Getting ObservationProvider from context');
+        final provider = Provider.of<ObservationProvider>(context, listen: false);
+        print('HomeScreen.loadData: ObservationProvider: $provider');
+        
+        print('HomeScreen.loadData: Calling provider.loadObservations()');
+        await provider.loadObservations();
+        print('HomeScreen.loadData: provider.loadObservations() completed successfully');
+      } catch (e, stackTrace) {
+        print('HomeScreen.loadData: ERROR in provider.loadObservations(): $e');
+        print('HomeScreen.loadData: Stack trace: $stackTrace');
+        // Continue without crashing the app
+      }
+    } else {
+      print('HomeScreen.loadData: Widget not mounted, skipping data load');
     }
   }
 
@@ -41,49 +60,66 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final provider = Provider.of<ObservationProvider>(context);
-    final observations = provider.observations;
+    print('HomeScreen.build: Building HomeScreen widget');
+    
+    try {
+      print('HomeScreen.build: Getting ObservationProvider from context');
+      final provider = Provider.of<ObservationProvider>(context);
+      print('HomeScreen.build: ObservationProvider: $provider');
+      final observations = provider.observations;
+      print('HomeScreen.build: Observations count: ${observations.length}');
 
-    final screens = [
-      _buildObservationList(context, observations, provider),
-      _buildObservationForm(context),
-      SettingsScreen(),
-    ];
+      final screens = [
+        _buildObservationList(context, observations, provider),
+        _buildObservationForm(context),
+        SettingsScreen(),
+      ];
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Conservation Data'),
-        actions: [
-          if (_selectedIndex == 0)
-            IconButton(
-              icon: const Icon(Icons.filter_list),
-              onPressed: () => _showFilterDialog(context),
+      print('HomeScreen.build: Returning Scaffold with ${screens.length} screens');
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Conservation Data'),
+          actions: [
+            if (_selectedIndex == 0)
+              IconButton(
+                icon: const Icon(Icons.filter_list),
+                onPressed: () => _showFilterDialog(context),
+              ),
+          ],
+        ),
+        body: screens[_selectedIndex],
+        bottomNavigationBar: BottomNavigationBar(
+          currentIndex: _selectedIndex,
+          onTap: _onNavTapped,
+          type: BottomNavigationBarType.fixed,
+          selectedItemColor: Theme.of(context).primaryColor,
+          unselectedItemColor: Colors.grey[600],
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.list),
+              label: 'Home',
             ),
-        ],
-      ),
-      body: screens[_selectedIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: _onNavTapped,
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: Theme.of(context).primaryColor,
-        unselectedItemColor: Colors.grey[600],
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.list),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.add_circle_outline),
-            label: 'Add',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: 'Settings',
-          ),
-        ],
-      ),
-    );
+            BottomNavigationBarItem(
+              icon: Icon(Icons.add_circle_outline),
+              label: 'Add',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.settings),
+              label: 'Settings',
+            ),
+          ],
+        ),
+      );
+    } catch (e, stackTrace) {
+      print('HomeScreen.build: ERROR building HomeScreen: $e');
+      print('HomeScreen.build: Stack trace: $stackTrace');
+      // Return a simple error widget to prevent complete screen failure
+      return Scaffold(
+        body: Center(
+          child: Text('Error building HomeScreen: $e'),
+        ),
+      );
+    }
   }
 
   Widget _buildObservationList(BuildContext context, List<Observation> observations, ObservationProvider provider) {
@@ -196,18 +232,23 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 Expanded(
-                  child: ListView.builder(
-                    itemCount: filteredObservations.length,
-                    itemBuilder: (context, index) {
-                      return ObservationCard(observation: filteredObservations[index]);
-                    },
-                  ),
-                ),
+                   child: RefreshIndicator(
+                     onRefresh: () async {
+                       await provider.loadObservations();
+                     },
+                     child: ListView.builder(
+                       itemCount: filteredObservations.length,
+                       itemBuilder: (context, index) {
+                         return ObservationCard(observation: filteredObservations[index]);
+                       },
+                     ),
+                   ),
+                 ),
               ],
             ),
           ),
-        // Debug button for testing database functionality
-        _buildDebugButton(),
+        // Add Synchronize button
+        _buildSynchronizeButton(),
       ],
     );
   }
@@ -374,68 +415,110 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildDebugButton() {
+  Widget _buildSynchronizeButton() {
+    final user = _auth.currentUser;
+    
     return Padding(
       padding: const EdgeInsets.all(16),
-      child: ElevatedButton(
-        onPressed: _saveTestData,
+      child: ElevatedButton.icon(
+        onPressed: () {
+          if (user == null) {
+            // User not logged in - show login dialog
+            _showLoginDialog();
+          } else {
+            // User is logged in - show sync message
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Syncing as ${user.email}'),
+                backgroundColor: Colors.green,
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          }
+        },
+        icon: Icon(user != null ? Icons.sync : Icons.login),
+        label: Text(user != null ? 'Synchronize' : 'Login to Sync'),
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.orange,
+          backgroundColor: user != null ? Colors.blue : Colors.orange,
           foregroundColor: Colors.white,
+          minimumSize: const Size(double.infinity, 48),
         ),
-        child: const Text('💾 Save Test Data'),
       ),
     );
   }
 
-  Future<void> _saveTestData() async {
+  void _showLoginDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Log in to sync data'),
+        content: const Text('You need to sign in with Google to synchronize your conservation data.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () {
+              Navigator.pop(context);
+              _signInWithGoogle();
+            },
+            icon: const Icon(Icons.login),
+            label: const Text('Continue with Google'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _signInWithGoogle() async {
     try {
-      print('🔧 Debug: Starting test data save...');
-      
-      // Create storage instance
-      print('🔧 Debug: Creating ObservationStorage instance...');
-      final storage = ObservationStorage();
-      print('🔧 Debug: ObservationStorage instance created successfully');
-      
-      // Create test observation
-      print('🔧 Debug: Creating test observation...');
-      final testObservation = Observation(
-        speciesName: 'Test Bird Species',
-        speciesType: SpeciesType.animal,
-        location: 'Near Goroka, Papua New Guinea',
-        dateTime: DateTime.now(),
-        quantity: 3,
-        description: 'Test observation for debugging database functionality',
-        conservationStatus: ConservationStatus.healthy,
-        habitatType: HabitatType.forest,
+      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+      if (googleUser == null) return;
+
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
       );
-      print('🔧 Debug: Test observation created: ${testObservation.speciesName}');
-      
-      // Save to storage
-      print('🔧 Debug: Calling storage.insert...');
-      final id = await storage.insert(testObservation);
-      print('🔧 Debug: Insert completed with ID: $id');
-      
-      if (id > 0) {
-        print('✅ Debug: Test data saved successfully with ID: $id');
+
+      await _auth.signInWithCredential(credential);
+
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Saved test data! ID: $id'),
+            content: Text("Logged in as ${googleUser.email}"),
             backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
           ),
         );
-      } else {
-        throw Exception('Insert returned invalid ID: $id');
+        // Refresh the UI to show the logged-in state
+        setState(() {});
       }
-    } catch (e, stackTrace) {
-      print('❌ Debug: Error saving test data: $e');
-      print('❌ Debug: Stack trace: $stackTrace');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+    } on FirebaseAuthException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Login failed: ${e.message ?? 'Unknown error'}"),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Login error: $e"),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
     }
   }
 

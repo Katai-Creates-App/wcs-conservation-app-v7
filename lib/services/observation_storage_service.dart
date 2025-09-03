@@ -28,18 +28,29 @@ class ObservationStorage implements ObservationStorageService {
 
   @override
   Future<void> initialize() async {
-    if (_initialized) return;
+    print('ObservationStorage.initialize: Starting initialization');
+    if (_initialized) {
+      print('ObservationStorage.initialize: Already initialized, returning early');
+      return;
+    }
     
     try {
+      print('ObservationStorage.initialize: Creating platform-specific storage service');
       _impl = _createStorageService();
+      print('ObservationStorage.initialize: Platform service created: ${_impl.runtimeType}');
+      
+      print('ObservationStorage.initialize: Calling platform service initialize()');
       await _impl.initialize();
       _initialized = true;
-      print('Storage initialized successfully for ${kIsWeb ? 'web' : 'mobile'}');
-    } catch (e) {
-      print('Storage initialization failed, using in-memory fallback: $e');
+      print('ObservationStorage.initialize: Storage initialized successfully for ${kIsWeb ? 'web' : 'mobile'}');
+    } catch (e, stackTrace) {
+      print('ObservationStorage.initialize: Storage initialization failed: $e');
+      print('ObservationStorage.initialize: Stack trace: $stackTrace');
+      print('ObservationStorage.initialize: Using in-memory fallback');
       _impl = InMemoryStorageService();
       await _impl.initialize();
       _initialized = true;
+      print('ObservationStorage.initialize: In-memory fallback initialized successfully');
     }
   }
 
@@ -109,13 +120,20 @@ class InMemoryStorageService implements ObservationStorageService {
 
   @override
   Future<void> initialize() async {
+    print('InMemoryStorageService.initialize: Starting in-memory storage initialization');
     // Load sample data for demonstration
     if (_observations.isEmpty) {
+      print('InMemoryStorageService.initialize: Loading sample data');
       await _loadSampleData();
+      print('InMemoryStorageService.initialize: Sample data loaded successfully');
+    } else {
+      print('InMemoryStorageService.initialize: Sample data already loaded, skipping');
     }
+    print('InMemoryStorageService.initialize: In-memory storage initialization completed');
   }
 
   Future<void> _loadSampleData() async {
+    print('InMemoryStorageService._loadSampleData: Creating sample observations');
     final sampleObservations = [
       Observation(
         speciesName: 'Red Maple',
@@ -146,9 +164,12 @@ class InMemoryStorageService implements ObservationStorageService {
       ),
     ];
 
+    print('InMemoryStorageService._loadSampleData: Inserting ${sampleObservations.length} sample observations');
     for (final obs in sampleObservations) {
-      await insert(obs);
+      final id = await insert(obs);
+      print('InMemoryStorageService._loadSampleData: Inserted sample observation with ID: $id');
     }
+    print('InMemoryStorageService._loadSampleData: Sample data loading completed');
   }
 
   @override

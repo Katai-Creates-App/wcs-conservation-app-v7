@@ -9,26 +9,56 @@ class MobileStorageService implements ObservationStorageService {
 
   @override
   Future<void> initialize() async {
-    if (_initialized) return;
+    print('MobileStorageService.initialize: Starting mobile storage initialization');
+    if (_initialized) {
+      print('MobileStorageService.initialize: Already initialized, returning early');
+      return;
+    }
     
-    // Initialize FFI for mobile/desktop
-    _initialized = true;
+    try {
+      print('MobileStorageService.initialize: Initializing FFI for mobile/desktop');
+      // Initialize FFI for mobile/desktop
+      _initialized = true;
+      print('MobileStorageService.initialize: Mobile storage initialization completed successfully');
+    } catch (e, stackTrace) {
+      print('MobileStorageService.initialize: ERROR in mobile storage initialization: $e');
+      print('MobileStorageService.initialize: Stack trace: $stackTrace');
+      rethrow;
+    }
   }
 
   Future<Database> get database async {
-    if (_database != null) return _database!;
+    print('MobileStorageService.database: Getting database instance');
+    if (_database != null) {
+      print('MobileStorageService.database: Returning existing database instance');
+      return _database!;
+    }
+    print('MobileStorageService.database: Creating new database instance');
     _database = await _initDB('observations.db');
+    print('MobileStorageService.database: Database instance created successfully');
     return _database!;
   }
 
   Future<Database> _initDB(String filePath) async {
-    final dbPath = await getDatabasesPath();
-    final path = join(dbPath, filePath);
-    return await openDatabase(
-      path,
-      version: 1,
-      onCreate: _createDB,
-    );
+    print('MobileStorageService._initDB: Initializing database with file: $filePath');
+    try {
+      final dbPath = await getDatabasesPath();
+      print('MobileStorageService._initDB: Database path: $dbPath');
+      final path = join(dbPath, filePath);
+      print('MobileStorageService._initDB: Full database path: $path');
+      
+      final database = await openDatabase(
+        path,
+        version: 1,
+        onCreate: _createDB,
+      );
+      print('MobileStorageService._initDB: Database opened successfully');
+      return database;
+    } catch (e, stackTrace) {
+      print('MobileStorageService._initDB: ERROR opening database: $e');
+      print('MobileStorageService._initDB: Stack trace: $stackTrace');
+      rethrow;
+    }
   }
 
   Future _createDB(Database db, int version) async {
