@@ -143,7 +143,9 @@ class ObservationProvider extends ChangeNotifier {
       final CollectionReference collection = FirebaseFirestore.instance.collection('observations');
 
       for (var obs in localObservations) {
-        if (obs.isSynced) continue;
+        if (obs.isSynced) {
+          continue;
+        }
         await collection.add({
           'speciesName': obs.speciesName,
           'speciesType': obs.speciesType.index,
@@ -157,8 +159,11 @@ class ObservationProvider extends ChangeNotifier {
           'userId': user.uid,
           'timestamp': FieldValue.serverTimestamp(),
         });
-        final updated = obs.copyWith(isSynced: true);
-        await ObservationStorage().update(updated);
+        print('✅ Uploaded: ' + obs.speciesName);
+
+        // Immediately mark as synced locally before the next upload
+        final updatedObs = obs.copyWith(isSynced: true);
+        await ObservationStorage().update(updatedObs);
       }
       await loadObservations();
       print('✅ Successfully synchronized ' + localObservations.length.toString() + ' observations to Firestore');
