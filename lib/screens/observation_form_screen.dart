@@ -4,6 +4,7 @@ import '../models/observation.dart';
 import '../providers/observation_provider.dart';
 import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:geolocator/geolocator.dart';
 import 'dart:io';
 
 class ObservationFormScreen extends StatefulWidget {
@@ -18,12 +19,12 @@ class ObservationFormScreen extends StatefulWidget {
 class _ObservationFormScreenState extends State<ObservationFormScreen> {
   final _formKey = GlobalKey<FormState>();
   final ImagePicker _picker = ImagePicker();
-  late String _speciesName;
   SpeciesType _speciesType = SpeciesType.plant;
-  String? _location;
+  late TextEditingController _speciesNameController;
+  late TextEditingController _locationController;
+  late TextEditingController _descriptionController;
   DateTime _dateTime = DateTime.now();
   int _quantity = 1;
-  String? _description;
   String? _photoPath;
   ConservationStatus _conservationStatus = ConservationStatus.healthy;
   HabitatType _habitatType = HabitatType.forest;
@@ -33,18 +34,25 @@ class _ObservationFormScreenState extends State<ObservationFormScreen> {
     super.initState();
     if (widget.observation != null) {
       final obs = widget.observation!;
-      _speciesName = obs.speciesName;
       _speciesType = obs.speciesType;
-      _location = obs.location;
       _dateTime = obs.dateTime;
       _quantity = obs.quantity;
-      _description = obs.description;
       _photoPath = obs.photoPath;
       _conservationStatus = obs.conservationStatus;
       _habitatType = obs.habitatType;
-    } else {
-      _speciesName = '';
     }
+
+    _speciesNameController = TextEditingController(text: widget.observation?.speciesName ?? '');
+    _locationController = TextEditingController(text: widget.observation?.location ?? '');
+    _descriptionController = TextEditingController(text: widget.observation?.description ?? '');
+  }
+
+  @override
+  void dispose() {
+    _speciesNameController.dispose();
+    _locationController.dispose();
+    _descriptionController.dispose();
+    super.dispose();
   }
 
   Future<void> _pickDate() async {
@@ -58,6 +66,78 @@ class _ObservationFormScreenState extends State<ObservationFormScreen> {
       setState(() {
         _dateTime = picked;
       });
+    }
+  }
+
+  Future<bool> _requestLocationPermission() async {
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        return false;
+      }
+    }
+    
+    if (permission == LocationPermission.deniedForever) {
+      return false;
+    }
+    
+    return true;
+  }
+
+  Future<void> _getCurrentLocation() async {
+    try {
+      bool hasPermission = await _requestLocationPermission();
+      if (!hasPermission) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Location permission denied. GPS coordinates will not be captured.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+        return;
+      }
+
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
+      final coords = "${position.latitude}, ${position.longitude}";
+
+      // Only fill if field is empty
+      if (_locationController.text.isEmpty) {
+        setState(() {
+          _locationController.text = coords;
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Location set to: $coords'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Location field already set. Not overriding.'),
+              backgroundColor: Colors.blueGrey,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to get location: ${e.toString()}'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
     }
   }
 
@@ -114,12 +194,12 @@ class _ObservationFormScreenState extends State<ObservationFormScreen> {
       try {
         final obs = Observation(
           id: widget.observation?.id,
-          speciesName: _speciesName,
+          speciesName: _speciesNameController.text,
           speciesType: _speciesType,
-          location: _location,
+          location: _locationController.text.isEmpty ? null : _locationController.text,
           dateTime: _dateTime,
           quantity: _quantity,
-          description: _description,
+          description: _descriptionController.text.isEmpty ? null : _descriptionController.text,
           photoPath: _photoPath,
           conservationStatus: _conservationStatus,
           habitatType: _habitatType,
@@ -186,14 +266,13 @@ class _ObservationFormScreenState extends State<ObservationFormScreen> {
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8.0),
                 child: TextFormField(
-                  initialValue: _speciesName,
+                  controller: _speciesNameController,
                   decoration: const InputDecoration(
                     labelText: 'Species Name *',
                     border: OutlineInputBorder(),
                     prefixIcon: Icon(Icons.nature),
                   ),
                   validator: (val) => val == null || val.isEmpty ? 'Required' : null,
-                  onSaved: (val) => _speciesName = val!,
                 ),
               ),
               const SizedBox(height: 16),
@@ -224,13 +303,27 @@ class _ObservationFormScreenState extends State<ObservationFormScreen> {
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8.0),
                 child: TextFormField(
-                  initialValue: _location,
-                  decoration: const InputDecoration(
+                  controller: _locationController,
+                  decoration: InputDecoration(
                     labelText: 'Location (GPS or manual)',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.location_on),
+                    border: const OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.location_on),
+                    suffixIcon: _locationController.text.isNotEmpty && _locationController.text.contains(',') 
+                        ? const Icon(Icons.gps_fixed, color: Colors.green)
+                        : null,
+                    helperText: _locationController.text.isNotEmpty && _locationController.text.contains(',') 
+                        ? 'GPS coordinates captured automatically'
+                        : null,
                   ),
-                  onSaved: (val) => _location = val,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: ElevatedButton.icon(
+                  onPressed: _getCurrentLocation,
+                  icon: const Icon(Icons.location_on),
+                  label: const Text('Get Current Location'),
                 ),
               ),
               const SizedBox(height: 16),
@@ -286,7 +379,7 @@ class _ObservationFormScreenState extends State<ObservationFormScreen> {
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8.0),
                 child: TextFormField(
-                  initialValue: _description,
+                  controller: _descriptionController,
                   decoration: const InputDecoration(
                     labelText: 'Description/Notes',
                     border: OutlineInputBorder(),
@@ -294,7 +387,6 @@ class _ObservationFormScreenState extends State<ObservationFormScreen> {
                     alignLabelWithHint: true,
                   ),
                   maxLines: 3,
-                  onSaved: (val) => _description = val,
                 ),
               ),
               const SizedBox(height: 24),

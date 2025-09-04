@@ -11,6 +11,7 @@ class Observation {
   int quantity;
   String? description;
   String? photoPath;
+  final String? audioPath;
   ConservationStatus conservationStatus;
   HabitatType habitatType;
 
@@ -23,6 +24,7 @@ class Observation {
     required this.quantity,
     this.description,
     this.photoPath,
+    this.audioPath,
     required this.conservationStatus,
     required this.habitatType,
   });
@@ -37,6 +39,7 @@ class Observation {
       quantity: map['quantity'],
       description: map['description'],
       photoPath: map['photo'],
+      audioPath: map['audio_path'],
       conservationStatus: ConservationStatus.values[map['conservation_status']],
       habitatType: HabitatType.values[map['habitat_type']],
     );
@@ -52,8 +55,42 @@ class Observation {
       'quantity': quantity,
       'description': description,
       'photo': photoPath,
+      'audio_path': audioPath,
       'conservation_status': conservationStatus.index,
       'habitat_type': habitatType.index,
     };
+  }
+
+  Observation copyWith({
+    int? id,
+    String? speciesName,
+    SpeciesType? speciesType,
+    String? location,
+    DateTime? dateTime,
+    int? quantity,
+    String? description,
+    String? photoPath,
+    String? audioPath,
+    ConservationStatus? conservationStatus,
+    HabitatType? habitatType,
+  }) {
+    return Observation(
+      id: id ?? this.id,
+      speciesName: speciesName ?? this.speciesName,
+      speciesType: speciesType ?? this.speciesType,
+      location: location ?? this.location,
+      dateTime: dateTime ?? this.dateTime,
+      quantity: quantity ?? this.quantity,
+      description: description ?? this.description,
+      photoPath: photoPath ?? this.photoPath,
+      audioPath: audioPath ?? this.audioPath,
+      conservationStatus: conservationStatus ?? this.conservationStatus,
+      habitatType: habitatType ?? this.habitatType,
+    );
+  }
+
+  @override
+  String toString() {
+    return 'Observation(id: ' + id.toString() + ', speciesName: ' + speciesName + ', speciesType: ' + speciesType.toString() + ', location: ' + location.toString() + ', dateTime: ' + dateTime.toIso8601String() + ', quantity: ' + quantity.toString() + ', description: ' + description.toString() + ', photoPath: ' + photoPath.toString() + ', audioPath: ' + audioPath.toString() + ', conservationStatus: ' + conservationStatus.toString() + ', habitatType: ' + habitatType.toString() + ')';
   }
 } 

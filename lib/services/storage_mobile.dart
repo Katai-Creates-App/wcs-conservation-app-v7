@@ -72,6 +72,7 @@ class MobileStorageService implements ObservationStorageService {
         quantity INTEGER NOT NULL,
         description TEXT,
         photo TEXT,
+        audio_path TEXT,
         conservation_status INTEGER NOT NULL,
         habitat_type INTEGER NOT NULL
       )
