@@ -61,7 +61,13 @@ class ObservationCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  _buildQuantityBadge(context),
+                  Row(
+                    children: [
+                      _buildSyncIcon(),
+                      const SizedBox(width: 8),
+                      _buildQuantityBadge(context),
+                    ],
+                  ),
                 ],
               ),
               if (observation.description != null && observation.description!.isNotEmpty) ...[
@@ -107,6 +113,14 @@ class ObservationCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildSyncIcon() {
+    return Icon(
+      observation.isSynced ? Icons.check_circle : Icons.sync,
+      color: observation.isSynced ? Colors.green : Colors.grey,
+      size: 20,
     );
   }
 

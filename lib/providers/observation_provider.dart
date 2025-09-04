@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../models/observation.dart';
 import '../services/observation_storage_service.dart';
 
@@ -130,5 +132,40 @@ class ObservationProvider extends ChangeNotifier {
   void clearError() {
     _errorMessage = null;
     notifyListeners();
+  }
+
+  Future<void> syncToFirestore() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    try {
+      final List<Observation> localObservations = await ObservationStorage().getAll();
+      final CollectionReference collection = FirebaseFirestore.instance.collection('observations');
+
+      for (var obs in localObservations) {
+        if (obs.isSynced) continue;
+        await collection.add({
+          'speciesName': obs.speciesName,
+          'speciesType': obs.speciesType.index,
+          'location': obs.location,
+          'date': obs.dateTime.toIso8601String(),
+          'quantity': obs.quantity,
+          'description': obs.description,
+          'photoPath': obs.photoPath,
+          'conservationStatus': obs.conservationStatus.index,
+          'habitatType': obs.habitatType.index,
+          'userId': user.uid,
+          'timestamp': FieldValue.serverTimestamp(),
+        });
+        final updated = obs.copyWith(isSynced: true);
+        await ObservationStorage().update(updated);
+      }
+      await loadObservations();
+      print('✅ Successfully synchronized ' + localObservations.length.toString() + ' observations to Firestore');
+    } on FirebaseException catch (e) {
+      print('❌ Firestore sync failed: ' + e.toString());
+    } catch (e) {
+      print('❌ Unknown error: ' + e.toString());
+    }
   }
 } 

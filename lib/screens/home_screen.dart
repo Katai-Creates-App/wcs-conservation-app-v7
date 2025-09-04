@@ -5,7 +5,6 @@ import 'package:google_sign_in/google_sign_in.dart';
 import '../providers/observation_provider.dart';
 import '../models/observation.dart';
 import '../widgets/observation_card.dart';
-import '../services/observation_storage_service.dart';
 import 'observation_form_screen.dart';
 import 'settings_screen.dart';
 
@@ -71,6 +70,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
       final screens = [
         _buildObservationList(context, observations, provider),
+        _buildSyncedList(context, observations.where((o) => o.isSynced).toList(), provider),
         _buildObservationForm(context),
         SettingsScreen(),
       ];
@@ -100,6 +100,10 @@ class _HomeScreenState extends State<HomeScreen> {
               label: 'Home',
             ),
             BottomNavigationBarItem(
+              icon: Icon(Icons.sync),
+              label: 'Synced',
+            ),
+            BottomNavigationBarItem(
               icon: Icon(Icons.add_circle_outline),
               label: 'Add',
             ),
@@ -120,6 +124,33 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       );
     }
+  }
+
+  Widget _buildSyncedList(BuildContext context, List<Observation> synced, ObservationProvider provider) {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+          child: Text(
+            'Synced',
+            style: Theme.of(context).textTheme.headlineSmall,
+          ),
+        ),
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: () async {
+              await provider.loadObservations();
+            },
+            child: ListView.builder(
+              itemCount: synced.length,
+              itemBuilder: (context, index) {
+                return ObservationCard(observation: synced[index]);
+              },
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _buildObservationList(BuildContext context, List<Observation> observations, ObservationProvider provider) {
@@ -421,19 +452,22 @@ class _HomeScreenState extends State<HomeScreen> {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: ElevatedButton.icon(
-        onPressed: () {
+        onPressed: () async {
           if (user == null) {
             // User not logged in - show login dialog
             _showLoginDialog();
           } else {
-            // User is logged in - show sync message
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Syncing as ${user.email}'),
-                backgroundColor: Colors.green,
-                duration: const Duration(seconds: 2),
-              ),
-            );
+            final provider = Provider.of<ObservationProvider>(context, listen: false);
+            await provider.syncToFirestore();
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Sync completed for ${user.email}'),
+                  backgroundColor: Colors.green,
+                  duration: const Duration(seconds: 2),
+                ),
+              );
+            }
           }
         },
         icon: Icon(user != null ? Icons.sync : Icons.login),

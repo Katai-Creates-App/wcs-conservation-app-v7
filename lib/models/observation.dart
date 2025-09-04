@@ -14,6 +14,7 @@ class Observation {
   final String? audioPath;
   ConservationStatus conservationStatus;
   HabitatType habitatType;
+  final bool isSynced;
 
   Observation({
     this.id,
@@ -27,6 +28,7 @@ class Observation {
     this.audioPath,
     required this.conservationStatus,
     required this.habitatType,
+    this.isSynced = false,
   });
 
   factory Observation.fromMap(Map<String, dynamic> map) {
@@ -42,6 +44,7 @@ class Observation {
       audioPath: map['audio_path'],
       conservationStatus: ConservationStatus.values[map['conservation_status']],
       habitatType: HabitatType.values[map['habitat_type']],
+      isSynced: (map['is_synced'] ?? 0) == 1,
     );
   }
 
@@ -58,6 +61,7 @@ class Observation {
       'audio_path': audioPath,
       'conservation_status': conservationStatus.index,
       'habitat_type': habitatType.index,
+      'is_synced': isSynced ? 1 : 0,
     };
   }
 
@@ -73,6 +77,7 @@ class Observation {
     String? audioPath,
     ConservationStatus? conservationStatus,
     HabitatType? habitatType,
+    bool? isSynced,
   }) {
     return Observation(
       id: id ?? this.id,
@@ -86,11 +91,12 @@ class Observation {
       audioPath: audioPath ?? this.audioPath,
       conservationStatus: conservationStatus ?? this.conservationStatus,
       habitatType: habitatType ?? this.habitatType,
+      isSynced: isSynced ?? this.isSynced,
     );
   }
 
   @override
   String toString() {
-    return 'Observation(id: ' + id.toString() + ', speciesName: ' + speciesName + ', speciesType: ' + speciesType.toString() + ', location: ' + location.toString() + ', dateTime: ' + dateTime.toIso8601String() + ', quantity: ' + quantity.toString() + ', description: ' + description.toString() + ', photoPath: ' + photoPath.toString() + ', audioPath: ' + audioPath.toString() + ', conservationStatus: ' + conservationStatus.toString() + ', habitatType: ' + habitatType.toString() + ')';
+    return 'Observation(id: ' + id.toString() + ', speciesName: ' + speciesName + ', speciesType: ' + speciesType.toString() + ', location: ' + location.toString() + ', dateTime: ' + dateTime.toIso8601String() + ', quantity: ' + quantity.toString() + ', description: ' + description.toString() + ', photoPath: ' + photoPath.toString() + ', audioPath: ' + audioPath.toString() + ', conservationStatus: ' + conservationStatus.toString() + ', habitatType: ' + habitatType.toString() + ', isSynced: ' + isSynced.toString() + ')';
   }
 } 

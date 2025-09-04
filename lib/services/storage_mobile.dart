@@ -74,7 +74,8 @@ class MobileStorageService implements ObservationStorageService {
         photo TEXT,
         audio_path TEXT,
         conservation_status INTEGER NOT NULL,
-        habitat_type INTEGER NOT NULL
+        habitat_type INTEGER NOT NULL,
+        is_synced INTEGER DEFAULT 0
       )
     ''');
     await db.execute('CREATE INDEX idx_species_type ON observations(species_type);');
